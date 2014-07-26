@@ -1,0 +1,61 @@
+---
+title: 'Peer Assessment 2: NOAA Storm Data'
+output: html_document
+---
+
+
+setwd("./RepResPeerAssessment2")
+rawData <- read.csv("data.csv.bz2")
+rawData$BGN_DATE <- strptime(rawData$BGN_DATE, format = "%m/%d/%Y %H:%M:%S")
+sub1 <- rawData[rawData$BGN_DATE > strptime("1996-01-01", format = "%Y-%m-%d"),]
+
+sub1$EVTYPE <- toupper(sub1$EVTYPE)
+sub1[sub1$EVTYPE == "TSTM WIND",]$EVTYPE <- "THUNDERSTORM WIND"
+sub1[sub1$EVTYPE == "MARINE TSTM WIND",]$EVTYPE <- "MARINE THUNDERSTORM WIND"
+##sub1$EVTYPE[grep("*HURRICANE*", sub1$EVTYPE)] <- "HURRICANE"
+##look into WINDS to WIND etc
+
+sub1$propMulti <- c(1)
+sub1$propMulti[sub1$PROPDMGEXP == "h" | sub1$PROPDMGEXP == "H"] <- 100
+sub1$propMulti[sub1$PROPDMGEXP == "k" | sub1$PROPDMGEXP == "K"] <- 1000
+sub1$propMulti[sub1$PROPDMGEXP == "m" | sub1$PROPDMGEXP == "M"] <- 1000000
+sub1$propMulti[sub1$PROPDMGEXP == "b" | sub1$PROPDMGEXP == "B"] <- 1000000000
+sub1$ActualPropDmg <- sub1$PROPDMG * sub1$propMulti
+
+sub1$cropMulti <- c(1)
+sub1$cropMulti[sub1$CROPDMGEXP == "h" | sub1$CROPDMGEXP == "H"] <- 100
+sub1$cropMulti[sub1$CROPDMGEXP == "k" | sub1$CROPDMGEXP == "K"] <- 1000
+sub1$cropMulti[sub1$CROPDMGEXP == "m" | sub1$CROPDMGEXP == "M"] <- 1000000
+sub1$cropMulti[sub1$CROPDMGEXP == "b" | sub1$CROPDMGEXP == "B"] <- 1000000000
+sub1$ActualCropDmg <- sub1$CROPDMG * sub1$cropMulti
+
+sumInj <- aggregate(sub1$INJURIES, by = list(sub1$EVTYPE), FUN = sum)
+sumInj <- sumInj[order(sumInj$x, decreasing = TRUE),]
+sumInj <- sumInj[1:10,]
+
+sumFat <- aggregate(sub1$FATALITIES, by = list(sub1$EVTYPE), FUN = sum)
+sumFat <- sumFat[order(sumFat$x, decreasing = TRUE),]
+sumFat <- sumFat[1:10,]
+
+library(ggplot2)
+
+sumInjplot <- ggplot(sumInj, aes(x = reorder(sumInj$Group.1, -sumInj$x), y = sumInj$x)) + geom_bar(stat = "identity", fill = "light blue", width = 0.4) + xlab("Event Type") + theme(axis.text.x = element_text(angle= 45)) + ylab("Total Injuries Inflicted") + ggtitle("Sum of Injuries Inflicted from 1996 by Event Type")
+
+sumFatplot <- ggplot(sumFat, aes(x = reorder(sumFat$Group.1, -sumFat$x), y = sumFat$x)) + geom_bar(stat = "identity", fill = "red", width = 0.4) + xlab("Event Type") + theme(axis.text.x = element_text(angle= 45)) + ylab("Total Fatalities Inflicted") + ggtitle("Sum of Fatalities Inflicted from 1996 by Event Type")
+
+library(gridExtra)
+grid.arrange(sumInjplot, sumFatplot, ncol = 2)
+
+sumPropDmg <- aggregate(sub1$ActualPropDmg, by = list(sub1$EVTYPE), FUN = sum)
+sumPropDmg <- sumPropDmg[order(sumPropDmg$x, decreasing = TRUE),]
+sumPropDmg <- sumPropDmg[1:10,]
+
+sumCropDmg <- aggregate(sub1$ActualCropDmg, by = list(sub1$EVTYPE), FUN = sum)
+sumCropDmg <- sumCropDmg[order(sumCropDmg$x, decreasing = TRUE),]
+sumCropDmg <- sumCropDmg[1:10,]
+
+sumPropPlot <- ggplot(sumPropDmg, aes(x = reorder(sumPropDmg$Group.1, -sumPropDmg$x), y = sumPropDmg$x)) + geom_bar(stat = "identity", fill = "light blue", width = 0.4) + xlab("Event Type") + theme(axis.text.x = element_text(angle = 45)) + ylab("Total Property Damage Inflicted") + ggtitle("Sum of Property Damage Inflicted since 1996 by Event Type")
+
+sumCropPlot <- ggplot(sumCropDmg, aes(x = reorder(sumCropDmg$Group.1, -sumCropDmg$x), y = sumCropDmg$x)) + geom_bar(stat = "identity", fill = "red", width = 0.4) + xlab("Event Type") + theme(axis.text.x = element_text(angle = 45)) + ylab("Total Crop Damage Inflicted") + ggtitle("Sum of Crop Damage Inflicted since 1996 by Event Type")
+
+grid.arrange(sumPropPlot, sumCropPlot, ncol = 2)
